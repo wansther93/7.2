@@ -1,0 +1,36 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Coleção de teste para validação de conectividade
+    match /test/{testId} {
+      allow read: if true;
+    }
+
+    // Coleção de animes: permite leitura para listas públicas e compartilhamento, e escrita apenas pelo dono
+    match /animes/{animeId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+
+    // Coleção de perfis de usuário: permite leitura pública de perfis/avatares e escrita exclusivamente pelo titular
+    match /user_profiles/{userId} {
+      allow read: if true;
+      allow create, update: if isSignedIn() && request.auth.uid == userId;
+      allow delete: if isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Coleção de avaliações e reviews comunitárias
+    match /anime_reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+    }
+  }
+}
+
+

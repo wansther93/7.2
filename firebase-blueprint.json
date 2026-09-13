@@ -1,0 +1,190 @@
+{
+  "entities": {
+    "Anime": {
+      "title": "Anime",
+      "description": "Registro de anime e progresso do usuário no WAnime List",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "ID do usuário autenticado no Firebase Auth"
+        },
+        "title": {
+          "type": "string",
+          "description": "Nome do anime"
+        },
+        "japaneseTitle": {
+          "type": "string",
+          "description": "Nome original em japonês / romaji"
+        },
+        "coverUrl": {
+          "type": "string",
+          "description": "URL da imagem de capa / miniatura"
+        },
+        "synopsis": {
+          "type": "string",
+          "description": "Sinopse e descrição"
+        },
+        "genres": {
+          "type": "array",
+          "description": "Gêneros do anime"
+        },
+        "studio": {
+          "type": "string",
+          "description": "Estúdio de animação"
+        },
+        "format": {
+          "type": "string",
+          "description": "Formato (TV, Movie, OVA, ONA, Especial)"
+        },
+        "source": {
+          "type": "string",
+          "description": "Fonte original (Mangá, Light Novel, Original, etc)"
+        },
+        "releaseYear": {
+          "type": "number",
+          "description": "Ano de lançamento"
+        },
+        "trailerUrl": {
+          "type": "string",
+          "description": "URL do trailer no YouTube"
+        },
+        "season": {
+          "type": "number",
+          "description": "Número da temporada (legado)"
+        },
+        "currentSeasonName": {
+          "type": "string",
+          "description": "Nome da temporada ou arco atual (ex: Temporada 3, Arco de Alabasta)"
+        },
+        "seasons": {
+          "type": "array",
+          "description": "Lista de temporadas e arcos do anime",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "name": { "type": "string" },
+              "totalEpisodes": { "type": "number" },
+              "order": { "type": "number" },
+              "isWatched": { "type": "boolean" }
+            }
+          }
+        },
+        "currentEpisode": {
+          "type": "number",
+          "description": "Último episódio assistido"
+        },
+        "totalEpisodes": {
+          "type": "number",
+          "description": "Total de episódios da temporada/geral (opcional)"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Onde parei / anotações de minutos e observações"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["watching", "waiting_new_episodes", "plan_to_watch", "completed", "paused", "dropped", "cancelled"],
+          "description": "Status do anime na lista do usuário"
+        },
+        "rating": {
+          "type": "number",
+          "description": "Nota pessoal de 1 a 10"
+        },
+        "broadcastDay": {
+          "type": "string",
+          "description": "Dia da semana de novos episódios"
+        },
+        "history": {
+          "type": "array",
+          "description": "Histórico de episódios assistidos com carimbo de data",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "episode": { "type": "number" },
+              "seasonName": { "type": "string" },
+              "timestamp": { "type": "string" },
+              "notes": { "type": "string" }
+            }
+          }
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Data ISO de criação"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Data ISO da última atualização"
+        }
+      },
+      "required": ["userId", "title", "currentEpisode", "status"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Configurações e personalização visual do perfil do usuário e compartilhamento público",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "customAvatarUrl": { "type": "string" },
+        "customBannerUrl": { "type": "string" },
+        "isPublicList": { "type": "boolean" },
+        "publicUsername": { "type": "string" },
+        "publicBio": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId"]
+    },
+    "AnimeReview": {
+      "title": "AnimeReview",
+      "description": "Avaliação e resenha comunitária de um anime",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "userDisplayName": { "type": "string" },
+        "userAvatarUrl": { "type": "string" },
+        "userNick": { "type": "string" },
+        "animeId": { "type": "string" },
+        "animeTitle": { "type": "string" },
+        "animeCoverUrl": { "type": "string" },
+        "rating": { "type": "number" },
+        "content": { "type": "string" },
+        "hasSpoilers": { "type": "boolean" },
+        "createdAt": { "type": "string" },
+        "likesCount": { "type": "number" },
+        "likedBy": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      },
+      "required": ["userId", "userDisplayName", "animeId", "animeTitle", "rating", "content"]
+    },
+    "TestDoc": {
+      "title": "TestDoc",
+      "description": "Documento de teste de conexão com o banco",
+      "type": "object",
+      "properties": {
+        "status": { "type": "string" }
+      }
+    }
+  },
+  "firestore": {
+    "/test/{testId}": {
+      "schema": "TestDoc",
+      "description": "Coleção para validação de conectividade com o Firestore"
+    },
+    "/animes/{animeId}": {
+      "schema": "Anime",
+      "description": "Coleção de animes registrados pelos usuários"
+    },
+    "/user_profiles/{userId}": {
+      "schema": "UserProfile",
+      "description": "Preferências e personalização de avatar/banner do usuário"
+    },
+    "/anime_reviews/{reviewId}": {
+      "schema": "AnimeReview",
+      "description": "Coleção de avaliações e reviews comunitárias"
+    }
+  }
+}

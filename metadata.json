@@ -1,0 +1,8 @@
+{
+  "name": "Rastreador de Animes 1.3",
+  "description": "Portal completo e profissional de animes: gerenciamento de lista, guia de temporadas, notícias, comunidade e reviews em tempo real, busca reversa de cenas por imagem (trace.moe), músicas/trilhas sonoras, personagens e seiyuus, gerador de stories/cards e gamificação com XP e níveis Otaku.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
