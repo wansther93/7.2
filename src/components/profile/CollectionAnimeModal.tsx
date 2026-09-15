@@ -19,13 +19,12 @@ import {
 } from 'lucide-react';
 import type { Anime } from '../../types';
 import { STATUS_CONFIG } from '../../types';
+import type { AnimeStreamingLink, AnimeCharacterItem } from '../../services/jikanService';
+import type { AnimeThemeMedia } from '../../services/animeThemesService';
 import {
-  getAnimeStreamingLinks,
-  getAnimeCharacters,
-  type AnimeStreamingLink,
-  type AnimeCharacterItem,
-} from '../../services/jikanService';
-import { fetchAnimeThemesMedia, type AnimeThemeMedia } from '../../services/animeThemesService';
+  getPersistedAnimeRichData,
+  getOrFetchAnimeRichData,
+} from '../../services/animeMetadataService';
 
 interface CollectionAnimeModalProps {
   anime: Anime;
@@ -56,59 +55,49 @@ export const CollectionAnimeModal: React.FC<CollectionAnimeModalProps> = ({
   const [isSynopsisExpanded, setIsSynopsisExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // Carrega informações ricas diretamente das 3 APIs em tempo de execução
+  // Carrega informações ricas de forma inteligente:
+  // Se já estiver salvo na coleção, lê imediatamente do armazenamento persistente (0ms de espera, 0 buscas repetidas).
+  // Se for novo ou não tiver sido sincronizado ainda, busca nas 3 APIs e salva localmente.
   useEffect(() => {
     if (!isOpen || !anime) return;
 
     let isMounted = true;
+
+    // 1. Tenta carregar os dados persistidos imediatamente
+    const persisted = getPersistedAnimeRichData(anime);
+    if (persisted) {
+      setStreamingLinks(persisted.streamingLinks || []);
+      setCharacters(persisted.characters || []);
+      setThemes(persisted.themes || []);
+      setLoadingStreaming(false);
+      setLoadingCharacters(false);
+      setLoadingThemes(false);
+      return;
+    }
+
+    // 2. Se for a 1ª vez ou anime recém-adicionado, busca nas APIs e salva
     setLoadingStreaming(true);
     setLoadingCharacters(true);
     setLoadingThemes(true);
 
-    const malId = anime.mal_id || 0;
-
-    // 1. Streaming oficial dinâmico das APIs
-    getAnimeStreamingLinks(malId, anime.title)
-      .then((links) => {
+    getOrFetchAnimeRichData(anime)
+      .then((data) => {
         if (isMounted) {
-          const sanitized = links.filter(
-            (l) => !l.name.toLowerCase().includes('youtube') && !l.url.toLowerCase().includes('youtube')
-          );
-          setStreamingLinks(sanitized);
+          setStreamingLinks(data.streamingLinks || []);
+          setCharacters(data.characters || []);
+          setThemes(data.themes || []);
           setLoadingStreaming(false);
-        }
-      })
-      .catch(() => {
-        if (isMounted) setLoadingStreaming(false);
-      });
-
-    // 2. Personagens & Seiyuus da API
-    getAnimeCharacters(malId, anime.title)
-      .then((chars) => {
-        if (isMounted) {
-          setCharacters(chars);
           setLoadingCharacters(false);
+          setLoadingThemes(false);
         }
       })
       .catch(() => {
-        if (isMounted) setLoadingCharacters(false);
+        if (isMounted) {
+          setLoadingStreaming(false);
+          setLoadingCharacters(false);
+          setLoadingThemes(false);
+        }
       });
-
-    // 3. Músicas & Temas (Openings e Endings) da API
-    if (anime.title || malId) {
-      fetchAnimeThemesMedia(anime.title, malId)
-        .then((thList) => {
-          if (isMounted) {
-            setThemes(thList);
-            setLoadingThemes(false);
-          }
-        })
-        .catch(() => {
-          if (isMounted) setLoadingThemes(false);
-        });
-    } else {
-      setLoadingThemes(false);
-    }
 
     return () => {
       isMounted = false;

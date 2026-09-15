@@ -21,10 +21,11 @@ import {
 } from 'lucide-react';
 import {
   ScheduleAnimeItem,
-  getAnimeStreamingLinks,
   getAnimeBanner,
   AnimeStreamingLink,
 } from '../services/jikanService';
+import { getAggregatedStreamingLinks } from '../services/multiApiAggregatorService';
+import { formatUpcomingReleaseForecast } from '../services/scheduleLifecycleService';
 import { fetchFreshAnimeDetails } from '../services/animeSyncService';
 import { fetchAnimeSpecificNews, GUARANTEED_ANIME_ARTWORKS } from '../services/newsService';
 import { checkIsSameFranchise } from '../services/franchiseService';
@@ -123,8 +124,8 @@ export const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
       });
     }
 
-    // Busca streaming oficial no Brasil (sem YouTube, pois YouTube é estritamente para trailers)
-    getAnimeStreamingLinks(malId, anime.title)
+    // Busca streaming oficial no Brasil com cascata multi-API (AniList + Jikan + Shikimori)
+    getAggregatedStreamingLinks(malId, anime.title)
       .then((links) => {
         if (isMounted) {
           const sanitized = links.filter(
@@ -232,45 +233,9 @@ export const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
     return `em ${minutes} min`;
   };
 
-  // Formata data de estreia para animes futuros
+  // Formata data de estreia para animes futuros com precisão 100% das APIs oficiais
   const formatReleaseDate = () => {
-    if (anime.startDate) {
-      const { day, month, year } = anime.startDate;
-      const monthsPt = [
-        'Janeiro',
-        'Fevereiro',
-        'Março',
-        'Abril',
-        'Maio',
-        'Junho',
-        'Julho',
-        'Agosto',
-        'Setembro',
-        'Outubro',
-        'Novembro',
-        'Dezembro',
-      ];
-      if (day && month && year) {
-        return `${String(day).padStart(2, '0')} de ${monthsPt[month - 1]} de ${year}`;
-      }
-      if (month && year) {
-        return `${monthsPt[month - 1]} de ${year}`;
-      }
-      if (year) {
-        return `Ano de ${year}`;
-      }
-    }
-    if (anime.season && anime.year) {
-      const seasonMap: Record<string, string> = {
-        WINTER: 'Inverno',
-        SPRING: 'Primavera',
-        SUMMER: 'Verão',
-        FALL: 'Outono',
-      };
-      return `Temporada de ${seasonMap[anime.season] || anime.season} de ${anime.year}`;
-    }
-    if (anime.year) return `Previsão: ${anime.year}`;
-    return 'Sem informações de exibição confirmadas';
+    return formatUpcomingReleaseForecast(anime.startDate, anime.season, anime.year).text;
   };
 
   const getStreamingBadgeStyle = (name: string) => {

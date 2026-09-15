@@ -112,10 +112,12 @@ export default function App() {
     }
   }, [cachedNews.length]);
 
-  // Atualiza as marcações das notícias ("Na Lista") se os animes forem modificados
+  // Atualiza as marcações das notícias ("Na Lista") e sincroniza metadados ricos em segundo plano
   useEffect(() => {
     if (animes && animes.length > 0) {
       setCachedNews((prev) => (prev.length > 0 ? tagUserAnimesInNews(prev, animes) : prev));
+      // Prefetch inteligente em segundo plano (processa apenas animes que ainda não estão salvos)
+      prefetchUserCollectionMetadata(animes).catch(() => {});
     }
   }, [animes]);
 

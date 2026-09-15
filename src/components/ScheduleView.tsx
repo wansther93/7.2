@@ -18,9 +18,6 @@ import {
 import { HorizontalScrollContainer } from './HorizontalScrollContainer';
 import { ScheduleDetailModal } from './ScheduleDetailModal';
 import { 
-  getWeeklySchedule, 
-  getSeasonNowAnimes, 
-  getSeasonUpcomingAnimes, 
   getCachedWeeklySchedule,
   getCachedSeasonNow,
   getCachedSeasonUpcoming,
@@ -28,6 +25,13 @@ import {
   type ScheduleAnimeItem, 
   type DayOfWeek 
 } from '../services/jikanService';
+import {
+  getAggregatedWeeklySchedule,
+  getAggregatedSeasonNowAnimes,
+  getAggregatedUpcomingAnimes,
+  getAutomatedScheduleLifecycle,
+} from '../services/multiApiAggregatorService';
+import { formatUpcomingReleaseForecast } from '../services/scheduleLifecycleService';
 import { getTodayBroadcastName, getAnimeAirCountdown } from '../lib/dateUtils';
 import { checkIsSameFranchise, getFranchiseRootTitle } from '../services/franchiseService';
 import type { Anime, AnimeFormData } from '../types';
@@ -177,17 +181,31 @@ const ScheduleAnimeCard = React.memo<ScheduleAnimeCardProps>(({
             {item.title}
           </h4>
 
-          {/* Gêneros Minimalistas */}
-          <div className="flex items-center gap-1 mt-1.5 flex-wrap min-h-[18px]">
-            {item.genres && item.genres.slice(0, 2).map((g) => (
-              <span
-                key={g}
-                className="text-[9px] font-medium px-1.5 py-0.5 rounded-md bg-white/[0.04] text-slate-400 border border-white/5 truncate max-w-[85px]"
-              >
-                {g}
-              </span>
-            ))}
-          </div>
+          {/* Previsão Exata da API para Próxima Temporada OU Gêneros para Em Exibição */}
+          {mainTab === 'season' && seasonSubTab === 'upcoming' ? (
+            (() => {
+              const forecast = formatUpcomingReleaseForecast(item.startDate, item.season, item.year);
+              return (
+                <div className="flex items-center gap-1.5 mt-1.5 min-h-[18px]">
+                  <Calendar className="w-3 h-3 text-amber-400 shrink-0" />
+                  <span className="text-[9.5px] font-bold text-amber-300 truncate" title={forecast.text}>
+                    {forecast.text}
+                  </span>
+                </div>
+              );
+            })()
+          ) : (
+            <div className="flex items-center gap-1 mt-1.5 flex-wrap min-h-[18px]">
+              {item.genres && item.genres.slice(0, 2).map((g) => (
+                <span
+                  key={g}
+                  className="text-[9px] font-medium px-1.5 py-0.5 rounded-md bg-white/[0.04] text-slate-400 border border-white/5 truncate max-w-[85px]"
+                >
+                  {g}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Barra de Ação: Estado no Rastreador ou Adicionar Rápido */}
@@ -302,7 +320,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         setSeasonNowList(localNow);
       } else {
         setIsFetchingSeasonNow(true);
-        getSeasonNowAnimes()
+        getAggregatedSeasonNowAnimes()
           .then((data) => {
             if (isMounted && data && data.length > 0) {
               setSeasonNowList(data);
@@ -324,7 +342,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         const timerUpcoming = setTimeout(() => {
           if (!isMounted) return;
           setIsFetchingSeasonUpcoming(true);
-          getSeasonUpcomingAnimes()
+          getAggregatedUpcomingAnimes()
             .then((data) => {
               if (isMounted && data && data.length > 0) {
                 setSeasonUpcomingList(data);
@@ -348,7 +366,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
     };
   }, []);
 
-  // Forçar atualização quando o usuário clica no botão manual de "Recarregar"
+  // Forçar atualização quando o usuário clica no botão manual de "Recarregar" (aciona as 3 APIs em cascata)
   useEffect(() => {
     if (refreshTrigger === 0) return;
     let isMounted = true;
@@ -356,7 +374,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
 
     if (mainTab === 'schedule') {
       setIsFetchingSchedule(true);
-      getWeeklySchedule(selectedDay)
+      getAggregatedWeeklySchedule(selectedDay)
         .then((data) => {
           if (isMounted) setScheduleList(data);
         })
@@ -368,7 +386,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         });
     } else if (seasonSubTab === 'now') {
       setIsFetchingSeasonNow(true);
-      getSeasonNowAnimes()
+      getAggregatedSeasonNowAnimes()
         .then((data) => {
           if (isMounted && data && data.length > 0) setSeasonNowList(data);
         })
@@ -380,7 +398,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         });
     } else {
       setIsFetchingSeasonUpcoming(true);
-      getSeasonUpcomingAnimes()
+      getAggregatedUpcomingAnimes()
         .then((data) => {
           if (isMounted && data && data.length > 0) setSeasonUpcomingList(data);
         })
@@ -411,7 +429,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
     setIsFetchingSchedule(true);
     setErrorMsg(null);
 
-    getWeeklySchedule(selectedDay)
+    getAggregatedWeeklySchedule(selectedDay)
       .then((data) => {
         if (isMounted) {
           setScheduleList(data);
@@ -432,7 +450,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
     };
   }, [mainTab, selectedDay]);
 
-  // Se o usuário entrar na aba e ela estiver vazia, busca na rede
+  // Se o usuário entrar na aba e ela estiver vazia, busca na rede com redundância tripla
   useEffect(() => {
     if (mainTab !== 'season') return;
     let isMounted = true;
@@ -444,7 +462,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         return;
       }
       setIsFetchingSeasonNow(true);
-      getSeasonNowAnimes()
+      getAggregatedSeasonNowAnimes()
         .then((data) => {
           if (isMounted && data && data.length > 0) setSeasonNowList(data);
         })
@@ -459,7 +477,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         return;
       }
       setIsFetchingSeasonUpcoming(true);
-      getSeasonUpcomingAnimes()
+      getAggregatedUpcomingAnimes()
         .then((data) => {
           if (isMounted && data && data.length > 0) setSeasonUpcomingList(data);
         })
