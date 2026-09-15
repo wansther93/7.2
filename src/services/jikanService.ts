@@ -1612,140 +1612,7 @@ async function fetchAniListRecommendations(malId?: number, searchTitle?: string)
   }
 }
 
-/**
- * Base curada de plataformas de exibição no Brasil para franquias renomadas
- */
-function getCuratedStreamingLinks(title: string): AnimeStreamingLink[] {
-  const t = title.toLowerCase();
-  const list: AnimeStreamingLink[] = [];
-
-  if (t.includes('the one piece') || t === 'one piece (wit)') {
-    list.push(
-      { name: 'Netflix', url: 'https://www.netflix.com/title/81610818' }
-    );
-  } else if (t.includes('one piece')) {
-    list.push(
-      { name: 'Crunchyroll', url: 'https://www.crunchyroll.com/series/GRMG8ZQZR/one-piece' },
-      { name: 'Netflix', url: 'https://www.netflix.com/title/80107103' },
-      { name: 'Max', url: 'https://www.max.com' }
-    );
-  } else if (t.includes('mushoku tensei') || t.includes('jobless reincarnation')) {
-    list.push(
-      { name: 'Crunchyroll', url: 'https://www.crunchyroll.com/series/G6VNDNV26/mushoku-tensei-jobless-reincarnation' }
-    );
-  } else if (t.includes('demon slayer') || t.includes('kimetsu no yaiba')) {
-    list.push(
-      { name: 'Crunchyroll', url: 'https://www.crunchyroll.com/series/GY5P48XEY/demon-slayer-kimetsu-no-yaiba' },
-      { name: 'Netflix', url: 'https://www.netflix.com/title/81091393' }
-    );
-  } else if (t.includes('jujutsu kaisen')) {
-    list.push(
-      { name: 'Crunchyroll', url: 'https://www.crunchyroll.com/series/GRDV0019R/jujutsu-kaisen' },
-      { name: 'Netflix', url: 'https://www.netflix.com' }
-    );
-  } else if (t.includes('bleach')) {
-    list.push(
-      { name: 'Disney+', url: 'https://www.disneyplus.com' }
-    );
-  } else if (t.includes('solo leveling')) {
-    list.push(
-      { name: 'Crunchyroll', url: 'https://www.crunchyroll.com/series/GDKH4E5VE/solo-leveling' }
-    );
-  } else if (t.includes('dandadan')) {
-    list.push(
-      { name: 'Crunchyroll', url: 'https://www.crunchyroll.com/series/GG5H5XQ26/dandadan' },
-      { name: 'Netflix', url: 'https://www.netflix.com' }
-    );
-  } else if (t.includes('frieren')) {
-    list.push(
-      { name: 'Crunchyroll', url: 'https://www.crunchyroll.com/series/GG5H5XQX4/frieren-beyond-journeys-end' }
-    );
-  } else if (t.includes('attack on titan') || t.includes('shingeki no kyojin')) {
-    list.push(
-      { name: 'Crunchyroll', url: 'https://www.crunchyroll.com/series/GR751KNZY/attack-on-titan' }
-    );
-  } else if (t.includes('naruto')) {
-    list.push(
-      { name: 'Crunchyroll', url: 'https://www.crunchyroll.com/series/GY8VM8MWY/naruto' },
-      { name: 'Netflix', url: 'https://www.netflix.com' }
-    );
-  } else if (t.includes('spy x family')) {
-    list.push(
-      { name: 'Crunchyroll', url: 'https://www.crunchyroll.com/series/G4PH0WXVJ/spy-x-family' },
-      { name: 'Netflix', url: 'https://www.netflix.com' }
-    );
-  } else if (t.includes('chainsaw man')) {
-    list.push(
-      { name: 'Crunchyroll', url: 'https://www.crunchyroll.com/series/GVDHXJ9VM/chainsaw-man' }
-    );
-  } else if (t.includes('dragon ball')) {
-    list.push(
-      { name: 'Crunchyroll', url: 'https://www.crunchyroll.com' },
-      { name: 'Max', url: 'https://www.max.com' }
-    );
-  } else if (t.includes('hunter x hunter')) {
-    list.push(
-      { name: 'Crunchyroll', url: 'https://www.crunchyroll.com/series/GY3VKX1MR/hunter-x-hunter' },
-      { name: 'Netflix', url: 'https://www.netflix.com' }
-    );
-  } else if (t.includes('my hero academia') || t.includes('boku no hero')) {
-    list.push(
-      { name: 'Crunchyroll', url: 'https://www.crunchyroll.com/series/G6NQ5DWZ6/my-hero-academia' },
-      { name: 'Netflix', url: 'https://www.netflix.com' }
-    );
-  } else if (t.includes('kusuriya') || t.includes('diários de uma apotecária') || t.includes('apothecary diaries')) {
-    list.push(
-      { name: 'Crunchyroll', url: 'https://www.crunchyroll.com/series/G3KHEVDJ7/the-apothecary-diaries' }
-    );
-  } else if (t.includes('re:zero') || t.includes('rezero')) {
-    list.push(
-      { name: 'Crunchyroll', url: 'https://www.crunchyroll.com/series/GRGG9798R/rezero-starting-life-in-another-world-' }
-    );
-  } else if (t.includes('sakamoto days')) {
-    list.push(
-      { name: 'Netflix', url: 'https://www.netflix.com' }
-    );
-  } else if (t.includes('blue lock')) {
-    list.push(
-      { name: 'Crunchyroll', url: 'https://www.crunchyroll.com/series/G4PH0WEKE/blue-lock' }
-    );
-  } else if (t.includes('kaiju no') || t.includes('kaiju no. 8') || t.includes('kaiju no 8')) {
-    list.push(
-      { name: 'Crunchyroll', url: 'https://www.crunchyroll.com/series/GG5H5XQ0D/kaiju-no-8' }
-    );
-  } else if (t.includes('shangri-la frontier')) {
-    list.push(
-      { name: 'Crunchyroll', url: 'https://www.crunchyroll.com/series/G79H23WEN/shangri-la-frontier' }
-    );
-  } else if (t.includes('wind breaker')) {
-    list.push(
-      { name: 'Crunchyroll', url: 'https://www.crunchyroll.com/series/G79H23W0G/wind-breaker' }
-    );
-  } else if (t.includes('delicious in dungeon') || t.includes('dungeon meshi')) {
-    list.push(
-      { name: 'Netflix', url: 'https://www.netflix.com' }
-    );
-  } else if (t.includes('ranma 1/2') || t.includes('ranma')) {
-    list.push(
-      { name: 'Netflix', url: 'https://www.netflix.com' }
-    );
-  } else if (t.includes('tokyo revengers')) {
-    list.push(
-      { name: 'Disney+', url: 'https://www.disneyplus.com' }
-    );
-  } else if (t.includes('undead unluck')) {
-    list.push(
-      { name: 'Disney+', url: 'https://www.disneyplus.com' }
-    );
-  } else if (t.includes('death note')) {
-    list.push(
-      { name: 'Netflix', url: 'https://www.netflix.com' },
-      { name: 'Max', url: 'https://www.max.com' }
-    );
-  }
-
-  return list;
-}
+// (Listas estáticas/hardcoded removidas - dados 100% dinâmicos das APIs)
 
 /**
  * Busca Personagens e Dubladores (Seiyuus) do Anime (Jikan API -> AniList GraphQL)
@@ -2104,76 +1971,12 @@ export function detectBrazilStreaming(item: {
     }
   }
 
-  // 2. Verifica base curada por título em português, inglês ou japonês
-  const searchTitles = [item.title, item.title_english, item.title_japanese].filter(Boolean) as string[];
-  for (const t of searchTitles) {
-    const curated = getCuratedStreamingLinks(t);
-    if (curated && curated.length > 0) {
-      const first = curated[0];
-      const n = first.name.toLowerCase();
-      if (n.includes('crunchyroll')) {
-        return {
-          name: 'Crunchyroll',
-          badgeBg: 'bg-[#f47521]/90',
-          badgeBorder: 'border-orange-400/50',
-          badgeText: 'text-white',
-          dotColor: 'bg-orange-300',
-        };
-      }
-      if (n.includes('netflix')) {
-        return {
-          name: 'Netflix',
-          badgeBg: 'bg-[#e50914]/90',
-          badgeBorder: 'border-red-400/50',
-          badgeText: 'text-white',
-          dotColor: 'bg-red-300',
-        };
-      }
-      if (n.includes('prime') || n.includes('amazon')) {
-        return {
-          name: 'Prime Video',
-          badgeBg: 'bg-[#00a8e1]/90',
-          badgeBorder: 'border-sky-400/50',
-          badgeText: 'text-white',
-          dotColor: 'bg-sky-300',
-        };
-      }
-      if (n.includes('disney')) {
-        return {
-          name: 'Disney+',
-          badgeBg: 'bg-[#113ccf]/90',
-          badgeBorder: 'border-blue-400/50',
-          badgeText: 'text-white',
-          dotColor: 'bg-blue-300',
-        };
-      }
-      if (n.includes('max') || n.includes('hbo')) {
-        return {
-          name: 'Max',
-          badgeBg: 'bg-purple-700/90',
-          badgeBorder: 'border-purple-400/50',
-          badgeText: 'text-white',
-          dotColor: 'bg-purple-300',
-        };
-      }
-      if (n.includes('onegai')) {
-        return {
-          name: 'Anime Onegai',
-          badgeBg: 'bg-pink-600/90',
-          badgeBorder: 'border-pink-400/50',
-          badgeText: 'text-white',
-          dotColor: 'bg-pink-300',
-        };
-      }
-    }
-  }
-
   return null;
 }
 
 /**
  * Busca Plataformas de Streaming onde o anime está disponível no Brasil
- * (Jikan Streaming + Jikan External + AniList External + Base Curada Brasil)
+ * (100% Dinâmico: Jikan Streaming + Jikan External + AniList External)
  */
 export const getAnimeStreamingLinks = async (malId: number, animeTitle?: string): Promise<AnimeStreamingLink[]> => {
   const cacheKey = `${malId || 'no_id'}_${animeTitle || ''}`;
@@ -2184,16 +1987,7 @@ export const getAnimeStreamingLinks = async (malId: number, animeTitle?: string)
 
   const linkMap = new Map<string, AnimeStreamingLink>();
 
-  // 1. Curadoria direta por título
-  if (animeTitle) {
-    const curated = getCuratedStreamingLinks(animeTitle);
-    curated.forEach((l) => {
-      const normalized = normalizeBrazilStreaming(l.name, l.url);
-      if (normalized) linkMap.set(normalized.name, normalized);
-    });
-  }
-
-  // 2. Tenta Jikan API /streaming e /external
+  // 1. Tenta Jikan API /streaming e /external
   if (malId) {
     try {
       const [resStream, resExternal] = await Promise.allSettled([
@@ -2233,7 +2027,7 @@ export const getAnimeStreamingLinks = async (malId: number, animeTitle?: string)
     }
   }
 
-  // 3. AniList GraphQL External & Streaming Links
+  // 2. AniList GraphQL External & Streaming Links
   try {
     const anilistStreams = await fetchAniListStreamingLinks(malId, animeTitle);
     anilistStreams.forEach((l) => {
@@ -2250,21 +2044,6 @@ export const getAnimeStreamingLinks = async (malId: number, animeTitle?: string)
   if (combined.length > 0) {
     streamingCache.set(cacheKey, { data: combined, timestamp: Date.now() });
     return combined;
-  }
-
-  // Fallback padrão se não houver link específico: busca direta oficial no Crunchyroll e Netflix Brasil
-  if (animeTitle) {
-    const fallbackLinks: AnimeStreamingLink[] = [
-      {
-        name: 'Crunchyroll',
-        url: `https://www.crunchyroll.com/pt-br/search?q=${encodeURIComponent(animeTitle)}`,
-      },
-      {
-        name: 'Netflix',
-        url: `https://www.netflix.com/search?q=${encodeURIComponent(animeTitle)}`,
-      },
-    ];
-    return fallbackLinks;
   }
 
   return [];

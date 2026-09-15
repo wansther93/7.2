@@ -58,6 +58,7 @@ import { ImageAnimeSearchModal } from './components/ImageAnimeSearchModal';
 import { SocialCardGeneratorModal, type CardType } from './components/SocialCardGeneratorModal';
 import { calculateOtakuLevel } from './services/xpService';
 import { checkAllAiringAnimesUpdates } from './services/animeSyncService';
+import { prefetchUserCollectionMetadata } from './services/animeMetadataService';
 import { checkAndNotifyTodayEpisodes } from './services/notificationService';
 import {
   getWeeklySchedule,
@@ -705,6 +706,7 @@ export default function App() {
       user.uid,
       (updatedList) => {
         setAnimes(updatedList);
+        prefetchUserCollectionMetadata(updatedList);
         setDataLoading(false);
         try {
           localStorage.setItem(`wanime_offline_animes_${user.uid}`, JSON.stringify(updatedList));

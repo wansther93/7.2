@@ -53,74 +53,10 @@ import { EditProfileModal } from './EditProfileModal';
 import { BadgesShowcaseModal } from './BadgesShowcaseModal';
 import { WriteReviewModal } from './WriteReviewModal';
 import { CollectionVersusModal } from '../social/CollectionVersusModal';
-import { ScheduleDetailModal } from '../ScheduleDetailModal';
-import type { ScheduleAnimeItem } from '../../services/jikanService';
+import { CollectionAnimeModal } from './CollectionAnimeModal';
+import { prefetchUserCollectionMetadata } from '../../services/animeMetadataService';
 import type { CommunityReview } from '../../services/communityService';
 import { copyToClipboard } from '../../lib/clipboard';
-import { translateBroadcastDay } from '../../services/aggregatorStatusService';
-
-function animeToScheduleItem(anime: Anime): ScheduleAnimeItem {
-  let numericId = 0;
-  if (typeof anime.id === 'number') {
-    numericId = anime.id;
-  } else if (typeof anime.id === 'string' && !isNaN(Number(anime.id))) {
-    numericId = Number(anime.id);
-  } else if (anime.mal_id) {
-    numericId = Number(anime.mal_id);
-  } else {
-    let hash = 0;
-    const str = anime.id || anime.title || 'anime';
-    for (let i = 0; i < str.length; i++) {
-      hash = (hash << 5) - hash + str.charCodeAt(i);
-      hash |= 0;
-    }
-    numericId = Math.abs(hash) || 1;
-  }
-
-  let resolvedStatus = anime.airingStatus || 'Finished Airing';
-
-  if (anime.status === 'watching') {
-    resolvedStatus = anime.airingStatus || 'Currently Airing';
-  } else if (anime.status === 'waiting_new_episodes') {
-    resolvedStatus = 'Not yet aired';
-  } else if (anime.status === 'plan_to_watch') {
-    resolvedStatus = anime.airingStatus || 'Not yet aired';
-  } else if (anime.status === 'completed') {
-    resolvedStatus = anime.airingStatus || 'Finished Airing';
-  }
-
-  // Apenas animes em exibição que possuam dia de transmissão recebem o dia traduzido
-  const isActivelyAiring =
-    resolvedStatus === 'Currently Airing' ||
-    resolvedStatus === 'releasing' ||
-    (anime.status === 'watching' && Boolean(anime.broadcastDay));
-
-  const validBroadcastDay = isActivelyAiring
-    ? translateBroadcastDay(anime.broadcastDay) || undefined
-    : undefined;
-
-  return {
-    id: numericId,
-    idMal: anime.mal_id ? Number(anime.mal_id) : undefined,
-    idAniList: (anime as any).aniListId ? Number((anime as any).aniListId) : undefined,
-    title: anime.title,
-    title_english: (anime as any).englishTitle,
-    title_japanese: anime.japaneseTitle,
-    coverUrl: anime.coverUrl || '',
-    bannerUrl: anime.bannerUrl || undefined,
-    broadcastDay: validBroadcastDay,
-    broadcastTime: validBroadcastDay ? (anime as any).broadcastTime : undefined,
-    genres: anime.genres || [],
-    score: typeof anime.rating === 'number' && anime.rating > 0 ? anime.rating : ((anime as any).score || null),
-    synopsis: anime.synopsis || null,
-    episodes: anime.totalEpisodes || null,
-    status: resolvedStatus,
-    studio: anime.studio || null,
-    year: anime.releaseYear || undefined,
-    format: anime.format || 'TV',
-    trailer: anime.trailerUrl ? { url: anime.trailerUrl } : null,
-  };
-}
 
 export interface OtakuProfileViewProps {
   profile: UserProfile | null;
@@ -179,11 +115,17 @@ export const OtakuProfileView: React.FC<OtakuProfileViewProps> = ({
   const [isWriteReviewOpen, setIsWriteReviewOpen] = useState(false);
   const [isVersusModalOpen, setIsVersusModalOpen] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
-  const [selectedScheduleAnime, setSelectedScheduleAnime] = useState<ScheduleAnimeItem | null>(null);
+  const [selectedCollectionAnime, setSelectedCollectionAnime] = useState<Anime | null>(null);
+
+  // Pré-carrega metadados silenciosamente em segundo plano a partir das APIs
+  useEffect(() => {
+    if (animes && animes.length > 0) {
+      prefetchUserCollectionMetadata(animes);
+    }
+  }, [animes]);
 
   const handleOpenAnimeInfo = useCallback((targetAnime: Anime) => {
-    const item = animeToScheduleItem(targetAnime);
-    setSelectedScheduleAnime(item);
+    setSelectedCollectionAnime(targetAnime);
   }, []);
 
   // Coleção Completa Expansível (minimizar/maximizar) e Filtro por Nome
@@ -1473,16 +1415,16 @@ export const OtakuProfileView: React.FC<OtakuProfileViewProps> = ({
         />
       )}
 
-      {/* Ficha Completa de Informações do Anime (idêntica à aba de Lançamentos) */}
-      {selectedScheduleAnime && (
-        <ScheduleDetailModal
-          anime={selectedScheduleAnime}
-          isOpen={Boolean(selectedScheduleAnime)}
-          onClose={() => setSelectedScheduleAnime(null)}
-          userAnimes={animes}
-          onAddAnime={onAddAnimeFromFriend}
+      {/* Modal Exclusivo e Isolado da Coleção Completa (100% Dinâmico das APIs, sem status deduzidos) */}
+      {selectedCollectionAnime && (
+        <CollectionAnimeModal
+          anime={selectedCollectionAnime}
+          isOpen={Boolean(selectedCollectionAnime)}
+          onClose={() => setSelectedCollectionAnime(null)}
+          isOwner={effectiveIsOwner}
+          onAddAnimeFromFriend={!effectiveIsOwner ? onAddAnimeFromFriend : undefined}
           onOpenInTracker={(animeId) => {
-            setSelectedScheduleAnime(null);
+            setSelectedCollectionAnime(null);
             const found = animes.find((a) => a.id === animeId);
             if (found && onOpenAnimeDetail) {
               onOpenAnimeDetail(found);
