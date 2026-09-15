@@ -30,6 +30,7 @@ import {
   getAggregatedSeasonNowAnimes,
   getAggregatedUpcomingAnimes,
   getAutomatedScheduleLifecycle,
+  SCHEDULE_UPDATED_EVENT,
 } from '../services/multiApiAggregatorService';
 import { formatUpcomingReleaseForecast } from '../services/scheduleLifecycleService';
 import { getTodayBroadcastName, getAnimeAirCountdown } from '../lib/dateUtils';
@@ -313,6 +314,25 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   useEffect(() => {
     let isMounted = true;
 
+    // Escuta atualizações do ciclo de vida em segundo plano (quando novas datas ou transições são detectadas)
+    const handleScheduleBackgroundUpdate = () => {
+      if (!isMounted) return;
+      const freshWeekly = getCachedWeeklySchedule(selectedDay);
+      if (freshWeekly && freshWeekly.length > 0) {
+        setScheduleList(freshWeekly);
+      }
+      const freshNow = getCachedSeasonNow();
+      if (freshNow && freshNow.length > 0) {
+        setSeasonNowList(freshNow);
+      }
+      const freshUpcoming = getCachedSeasonUpcoming();
+      if (freshUpcoming && freshUpcoming.length > 0) {
+        setSeasonUpcomingList(freshUpcoming);
+      }
+    };
+
+    window.addEventListener(SCHEDULE_UPDATED_EVENT, handleScheduleBackgroundUpdate);
+
     // Se a temporada atual ainda não tiver em memória, preenche do cache local ou busca uma vez
     if (seasonNowList.length === 0) {
       const localNow = getCachedSeasonNow();
@@ -357,14 +377,16 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         return () => {
           isMounted = false;
           clearTimeout(timerUpcoming);
+          window.removeEventListener(SCHEDULE_UPDATED_EVENT, handleScheduleBackgroundUpdate);
         };
       }
     }
 
     return () => {
       isMounted = false;
+      window.removeEventListener(SCHEDULE_UPDATED_EVENT, handleScheduleBackgroundUpdate);
     };
-  }, []);
+  }, [selectedDay]);
 
   // Forçar atualização quando o usuário clica no botão manual de "Recarregar" (aciona as 3 APIs em cascata)
   useEffect(() => {

@@ -68,6 +68,7 @@ import {
   getCachedSeasonNow,
   getCachedSeasonUpcoming,
 } from './services/jikanService';
+import { runBackgroundScheduleSync } from './services/multiApiAggregatorService';
 import {
   getAllAnimeNewsWithUserTags,
   getCachedNewsInstant,
@@ -407,6 +408,11 @@ export default function App() {
   useEffect(() => {
     const today = (getTodayBroadcastName() as any) || 'Segunda';
 
+    // 0. Sincronização automatizada da Agenda em segundo plano (AniList -> Jikan -> Shikimori)
+    // Disparada silenciosamente logo após o mount para garantir que novas obras, transições de estreia
+    // e conclusões de temporada estejam 100% atualizadas sem bloquear o usuário.
+    runBackgroundScheduleSync().catch(() => {});
+
     // Dispara com prioridade baixa (1.5s após inicializar) para garantir que a lista principal já esteja leve e pronta
     const bootTimer = setTimeout(() => {
       // 1. Calendário de hoje
@@ -438,6 +444,8 @@ export default function App() {
     // Sincronização periódica silenciosa a cada 4 minutos para manter novidades atualizadas
     const newsInterval = setInterval(() => {
       handleFetchNews(false);
+      // Mantém a agenda periodicamente sincronizada caso o app fique aberto
+      runBackgroundScheduleSync().catch(() => {});
     }, 1000 * 60 * 4);
 
     return () => {

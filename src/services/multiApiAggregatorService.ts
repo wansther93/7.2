@@ -22,6 +22,11 @@ import {
 } from './shikimoriService';
 import { reconcileScheduleLifecycle } from './scheduleLifecycleService';
 
+const LOCAL_SEASON_NOW_KEY = 'wanime_season_now_v4';
+const LOCAL_SEASON_UPCOMING_KEY = 'wanime_season_upcoming_v4';
+const LOCAL_SCHEDULE_KEY_PREFIX = 'wanime_schedule_v4_';
+const SCHEDULE_BACKGROUND_SYNC_TS = 'wanime_bg_schedule_sync_ts';
+
 // Caches em memória para resposta instantânea
 const multiScheduleCache = new Map<string, { data: ScheduleAnimeItem[]; timestamp: number }>();
 const multiUpcomingCache = new Map<string, { data: ScheduleAnimeItem[]; timestamp: number }>();
@@ -30,6 +35,7 @@ const multiCharCache = new Map<string, { data: AnimeCharacterItem[]; timestamp: 
 const multiStreamCache = new Map<string, { data: AnimeStreamingLink[]; timestamp: number }>();
 
 const CACHE_TTL = 30 * 60 * 1000; // 30 minutos
+const BG_SYNC_INTERVAL = 10 * 60 * 1000; // 10 minutos para verificação silenciosa na inicialização
 
 /**
  * 1. Calendário Semanal Agregado (AniList -> Jikan -> Shikimori)
@@ -156,6 +162,93 @@ export async function getAutomatedScheduleLifecycle(dayPt?: string): Promise<{
     activeWeekly: reconciled.activeWeekly,
     activeUpcoming: reconciled.cleanUpcoming,
   };
+}
+
+/**
+ * Evento disparado no window quando o ciclo em segundo plano descobre animes novos,
+ * transições de estreia ou mudanças de data.
+ */
+export const SCHEDULE_UPDATED_EVENT = 'wanime_schedule_updated';
+
+let isBgSyncRunning = false;
+
+/**
+ * Worker Silencioso de Inicialização da Agenda:
+ * Disparado na inicialização do aplicativo em segundo plano.
+ * - Varre as 3 APIs (AniList -> Jikan -> Shikimori).
+ * - Identifica novas produções cadastradas pelas produtoras japonesas em Próxima Temporada.
+ * - Migra animes que estrearam para a grade de Em Exibição na semana e horário brasileiro.
+ * - Remove do calendário semanal animes que concluíram sua temporada.
+ * - Salva nos armazenamentos locais persistentes para abertura imediata (0ms) na aba de Agenda.
+ */
+export async function runBackgroundScheduleSync(force = false): Promise<void> {
+  if (isBgSyncRunning) return;
+  if (typeof window === 'undefined') return;
+
+  const lastSync = Number(localStorage.getItem(SCHEDULE_BACKGROUND_SYNC_TS) || '0');
+  const now = Date.now();
+
+  // Evita requisições repetidas se já foi sincronizado recentemente, exceto se forçado
+  if (!force && now - lastSync < BG_SYNC_INTERVAL) {
+    return;
+  }
+
+  isBgSyncRunning = true;
+  try {
+    // 1. Busca calendário semanal e próximas estreias via cascata multi-API
+    const [weeklyRaw, upcomingRaw, seasonNowRaw] = await Promise.all([
+      getAggregatedWeeklySchedule().catch(() => []),
+      getAggregatedUpcomingAnimes().catch(() => []),
+      getAggregatedSeasonNowAnimes().catch(() => []),
+    ]);
+
+    // 2. Reconciliação do ciclo de vida: promove estreias e remove finalizados
+    const { activeWeekly, cleanUpcoming } = reconcileScheduleLifecycle(weeklyRaw, upcomingRaw);
+
+    // 3. Atualiza cache em memória e persistente local
+    if (activeWeekly.length > 0) {
+      multiScheduleCache.set('all', { data: activeWeekly, timestamp: now });
+      try {
+        localStorage.setItem(`${LOCAL_SCHEDULE_KEY_PREFIX}all`, JSON.stringify({ data: activeWeekly, timestamp: now }));
+        localStorage.setItem(`${LOCAL_SCHEDULE_KEY_PREFIX}all_ts`, String(now));
+      } catch {}
+    }
+
+    if (cleanUpcoming.length > 0) {
+      multiUpcomingCache.set('upcoming_all', { data: cleanUpcoming, timestamp: now });
+      try {
+        localStorage.setItem(LOCAL_SEASON_UPCOMING_KEY, JSON.stringify({ data: cleanUpcoming, timestamp: now }));
+        localStorage.setItem(`${LOCAL_SEASON_UPCOMING_KEY}_ts`, String(now));
+      } catch {}
+    }
+
+    if (seasonNowRaw.length > 0) {
+      multiSeasonNowCache.set('season_now_all', { data: seasonNowRaw, timestamp: now });
+      try {
+        localStorage.setItem(LOCAL_SEASON_NOW_KEY, JSON.stringify({ data: seasonNowRaw, timestamp: now }));
+        localStorage.setItem(`${LOCAL_SEASON_NOW_KEY}_ts`, String(now));
+      } catch {}
+    }
+
+    // Grava timestamp da última sincronização bem-sucedida
+    localStorage.setItem(SCHEDULE_BACKGROUND_SYNC_TS, String(now));
+
+    // 4. Notifica componentes da aplicação sobre dados frescos
+    try {
+      window.dispatchEvent(new CustomEvent(SCHEDULE_UPDATED_EVENT, {
+        detail: {
+          weeklyCount: activeWeekly.length,
+          upcomingCount: cleanUpcoming.length,
+          seasonNowCount: seasonNowRaw.length,
+          timestamp: now,
+        }
+      }));
+    } catch {}
+  } catch (err) {
+    console.warn('Sincronização em background da Agenda falhou silenciosamente:', err);
+  } finally {
+    isBgSyncRunning = false;
+  }
 }
 
 /**
