@@ -291,7 +291,28 @@ export const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
       broadcastTime: anime.broadcastTime,
       totalEpisodes: anime.episodes,
       bannerUrl: bannerUrl || anime.bannerUrl || null,
+      startDate: anime.startDate,
+      season: anime.season,
+      seasonYear: anime.year,
     });
+
+  // Previsão de Lançamento 100% fiel às APIs oficiais (paridade exata com o card da Agenda)
+  const initialForecast = formatUpcomingReleaseForecast(anime.startDate, anime.season, anime.year);
+  const liveUpcomingDate = effectiveAggregatedStatus.upcomingDate;
+
+  const displayUpcomingDate =
+    initialForecast.hasConfirmedDate
+      ? initialForecast.text
+      : (liveUpcomingDate && liveUpcomingDate !== 'Aguardando data oficial de estreia'
+          ? liveUpcomingDate
+          : initialForecast.text);
+
+  const displayUpcomingTitle =
+    effectiveAggregatedStatus.upcomingTitle &&
+    effectiveAggregatedStatus.upcomingTitle !== 'Próxima Temporada' &&
+    effectiveAggregatedStatus.upcomingTitle !== 'Em Produção'
+      ? effectiveAggregatedStatus.upcomingTitle
+      : anime.title;
 
   return (
     <div
@@ -437,12 +458,12 @@ export const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
                     {effectiveAggregatedStatus.statusBadgeLabel}:
                   </span>
                   <span className="font-semibold text-white truncate">
-                    {effectiveAggregatedStatus.upcomingTitle || 'Próxima Temporada Confirmada'}
+                    {displayUpcomingTitle}
                   </span>
                 </div>
                 <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-black/50 border border-amber-500/20 text-amber-200 font-medium text-[11px]">
                   <Calendar className="w-3 h-3 text-amber-400" />
-                  <span>{effectiveAggregatedStatus.upcomingDate || 'Aguardando data'}</span>
+                  <span>{displayUpcomingDate}</span>
                 </div>
               </div>
               {effectiveAggregatedStatus.statusDescription && (

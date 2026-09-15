@@ -142,6 +142,9 @@ export function resolveAnimeAggregatedStatus(params: {
   }> | null;
   totalEpisodes?: number | null;
   bannerUrl?: string | null;
+  startDate?: { year?: number | null; month?: number | null; day?: number | null } | null;
+  season?: string | null;
+  seasonYear?: number | null;
 }): AnimeAggregatedStatus {
   const {
     rawApiStatus,
@@ -151,6 +154,9 @@ export function resolveAnimeAggregatedStatus(params: {
     apiRelations,
     totalEpisodes,
     bannerUrl,
+    startDate,
+    season,
+    seasonYear,
   } = params;
 
   const rawClean = (rawApiStatus || '').toLowerCase().trim();
@@ -269,8 +275,14 @@ export function resolveAnimeAggregatedStatus(params: {
     const upcomingTitle =
       relationUpcomingNode?.title?.romaji ||
       relationUpcomingNode?.title?.english ||
-      'Próxima Temporada';
-    const upcomingDate = formatUpcomingReleaseDate(relationUpcomingNode);
+      (relationUpcomingNode ? 'Próxima Temporada' : params.title);
+
+    const dateNode = relationUpcomingNode || {
+      startDate,
+      seasonYear: seasonYear || (startDate?.year ?? undefined),
+      season,
+    };
+    const upcomingDate = formatUpcomingReleaseDate(dateNode);
 
     return {
       state: 'upcoming',
@@ -312,6 +324,12 @@ export function resolveAnimeAggregatedStatus(params: {
   }
 
   // Fallback padrão se não for finalizado nem tiver transmissão confirmada
+  const fallbackDate = formatUpcomingReleaseDate({
+    startDate,
+    seasonYear: seasonYear || (startDate?.year ?? undefined),
+    season,
+  });
+
   return {
     state: 'upcoming',
     isCurrentlyAiring: false,
@@ -319,9 +337,9 @@ export function resolveAnimeAggregatedStatus(params: {
     isFinished: false,
     broadcastDay: null,
     broadcastTime: null,
-    upcomingTitle: 'Em Produção',
-    upcomingDate: 'Aguardando data oficial de estreia',
-    statusBadgeLabel: 'Aguardando Lançamento',
+    upcomingTitle: params.title || 'Em Produção',
+    upcomingDate: fallbackDate,
+    statusBadgeLabel: fallbackDate !== 'Aguardando data oficial de estreia' ? 'Próxima Temporada Confirmada' : 'Aguardando Lançamento',
     statusDescription: 'Aguardando confirmação oficial dos produtores sobre novas informações.',
     totalAggregateEpisodes: totalEpisodes,
     bannerUrl: relationBanner,

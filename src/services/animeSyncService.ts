@@ -57,6 +57,8 @@ export const fetchFreshAnimeDetails = async (
           genres
           averageScore
           seasonYear
+          season
+          startDate { year month day }
           studios(isMain: true) { nodes { name } }
           nextAiringEpisode {
             airingAt
@@ -126,6 +128,9 @@ export const fetchFreshAnimeDetails = async (
           apiRelations: media.relations?.edges || null,
           totalEpisodes: media.episodes || null,
           bannerUrl: media.bannerImage || null,
+          startDate: media.startDate || null,
+          season: media.season || null,
+          seasonYear: media.seasonYear || null,
         });
 
         return {
@@ -167,6 +172,15 @@ export const fetchFreshAnimeDetails = async (
           broadcastTime: item.broadcast?.time || null,
           userTrackerStatus: userStatus,
           totalEpisodes: item.episodes || null,
+          startDate: item.aired?.prop?.from
+            ? {
+                year: item.aired.prop.from.year,
+                month: item.aired.prop.from.month,
+                day: item.aired.prop.from.day,
+              }
+            : null,
+          season: item.season || null,
+          seasonYear: item.year || null,
         });
 
         return {
