@@ -20,7 +20,9 @@ import {
 import type { Anime } from '../../types';
 import { STATUS_CONFIG } from '../../types';
 import type { AnimeStreamingLink, AnimeCharacterItem } from '../../services/jikanService';
+import { getAnimeBanner } from '../../services/jikanService';
 import type { AnimeThemeMedia } from '../../services/animeThemesService';
+import { updateAnime } from '../../services/animeService';
 import {
   getPersistedAnimeRichData,
   getOrFetchAnimeRichData,
@@ -52,16 +54,21 @@ export const CollectionAnimeModal: React.FC<CollectionAnimeModalProps> = ({
   const [themes, setThemes] = useState<AnimeThemeMedia[]>([]);
   const [loadingThemes, setLoadingThemes] = useState(false);
 
+  const [bannerUrl, setBannerUrl] = useState<string | null>(anime.bannerUrl || null);
+  const [trailerUrl, setTrailerUrl] = useState<string | null>(anime.trailerUrl || null);
+
   const [isSynopsisExpanded, setIsSynopsisExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
 
   // Carrega informações ricas de forma inteligente:
   // Se já estiver salvo na coleção, lê imediatamente do armazenamento persistente (0ms de espera, 0 buscas repetidas).
-  // Se for novo ou não tiver sido sincronizado ainda, busca nas 3 APIs e salva localmente.
+  // Se for novo ou anime antigo sem dados sincronizados, busca nas APIs agregadas, auto-cura trailer e salva banner oficial.
   useEffect(() => {
     if (!isOpen || !anime) return;
 
     let isMounted = true;
+    setBannerUrl(anime.bannerUrl || null);
+    setTrailerUrl(anime.trailerUrl || null);
 
     // 1. Tenta carregar os dados persistidos imediatamente
     const persisted = getPersistedAnimeRichData(anime);
@@ -69,13 +76,27 @@ export const CollectionAnimeModal: React.FC<CollectionAnimeModalProps> = ({
       setStreamingLinks(persisted.streamingLinks || []);
       setCharacters(persisted.characters || []);
       setThemes(persisted.themes || []);
+      if (persisted.bannerUrl && !anime.bannerUrl) setBannerUrl(persisted.bannerUrl);
+      if (persisted.trailerUrl && !anime.trailerUrl) setTrailerUrl(persisted.trailerUrl);
       setLoadingStreaming(false);
       setLoadingCharacters(false);
       setLoadingThemes(false);
+
+      // Se o anime ainda não possui banner oficial salvo, busca nas APIs oficiais
+      if (!anime.bannerUrl && !persisted.bannerUrl) {
+        getAnimeBanner(anime.mal_id || 0, anime.title).then((found) => {
+          if (isMounted && found) {
+            setBannerUrl(found);
+            if (isOwner && anime.id) {
+              updateAnime(anime.id, { bannerUrl: found }).catch(() => {});
+            }
+          }
+        });
+      }
       return;
     }
 
-    // 2. Se for a 1ª vez ou anime recém-adicionado, busca nas APIs e salva
+    // 2. Se for a 1ª vez ou anime recém-adicionado/antigo, busca nas APIs e salva
     setLoadingStreaming(true);
     setLoadingCharacters(true);
     setLoadingThemes(true);
@@ -86,9 +107,23 @@ export const CollectionAnimeModal: React.FC<CollectionAnimeModalProps> = ({
           setStreamingLinks(data.streamingLinks || []);
           setCharacters(data.characters || []);
           setThemes(data.themes || []);
+          if (data.bannerUrl) setBannerUrl(data.bannerUrl);
+          if (data.trailerUrl) setTrailerUrl(data.trailerUrl);
           setLoadingStreaming(false);
           setLoadingCharacters(false);
           setLoadingThemes(false);
+
+          // Se ainda não descobriu o banner, busca na relação de franquia
+          if (!data.bannerUrl && !anime.bannerUrl) {
+            getAnimeBanner(data.mal_id || anime.mal_id || 0, anime.title).then((found) => {
+              if (isMounted && found) {
+                setBannerUrl(found);
+                if (isOwner && anime.id) {
+                  updateAnime(anime.id, { bannerUrl: found }).catch(() => {});
+                }
+              }
+            });
+          }
         }
       })
       .catch(() => {
@@ -102,7 +137,7 @@ export const CollectionAnimeModal: React.FC<CollectionAnimeModalProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [isOpen, anime]);
+  }, [isOpen, anime, isOwner]);
 
   if (!isOpen || !anime) return null;
 
@@ -175,7 +210,10 @@ export const CollectionAnimeModal: React.FC<CollectionAnimeModalProps> = ({
     const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|watch\?.+&v=))([\w-]{11})/);
     return match ? match[1] : null;
   };
-  const youtubeVideoId = extractYoutubeId(anime.trailerUrl);
+  const effectiveTrailer = trailerUrl || anime.trailerUrl;
+  const youtubeVideoId = extractYoutubeId(effectiveTrailer);
+
+  const effectiveBanner = bannerUrl || anime.bannerUrl;
 
   const statusConfig = STATUS_CONFIG[anime.status] || {
     label: anime.status || 'Na Lista',
@@ -194,26 +232,27 @@ export const CollectionAnimeModal: React.FC<CollectionAnimeModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Banner Superior */}
-        <div className="relative h-48 sm:h-56 w-full bg-black flex-shrink-0 overflow-hidden">
+        <div className="relative h-48 sm:h-56 w-full bg-zinc-950 flex-shrink-0 overflow-hidden">
           <div className="absolute inset-0 overflow-hidden">
-            {anime.bannerUrl ? (
+            {effectiveBanner ? (
               <img
-                src={anime.bannerUrl}
+                src={effectiveBanner}
                 alt={anime.title}
                 referrerPolicy="no-referrer"
                 className="w-full h-full object-cover object-center brightness-100"
               />
             ) : (
-              <div className="w-full h-full relative overflow-hidden bg-black">
+              <div className="w-full h-full relative overflow-hidden bg-zinc-900">
                 <img
                   src={anime.coverUrl}
                   alt={anime.title}
                   referrerPolicy="no-referrer"
-                  className="w-full h-full object-cover object-center blur-md scale-110 opacity-40 brightness-75"
+                  className="w-full h-full object-cover object-center blur-sm scale-105 opacity-80 brightness-95"
                 />
               </div>
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent" />
+            {/* Gradiente sutil apenas na base para permitir a leitura clara das tags sem apagar a arte do topo */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none" />
           </div>
 
           {/* Botões do Topo */}
@@ -653,7 +692,8 @@ export const CollectionAnimeModal: React.FC<CollectionAnimeModalProps> = ({
                     title: anime.title,
                     mal_id: anime.mal_id,
                     coverUrl: anime.coverUrl,
-                    bannerUrl: anime.bannerUrl,
+                    bannerUrl: effectiveBanner || anime.bannerUrl,
+                    trailerUrl: effectiveTrailer || anime.trailerUrl,
                     totalEpisodes: anime.totalEpisodes,
                     format: anime.format,
                     genres: anime.genres,

@@ -281,9 +281,7 @@ export default function App() {
   const [showAiringBanner, setShowAiringBanner] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('updated_desc');
-  const [viewMode, setViewMode] = useState<ViewMode>(() => {
-    return (localStorage.getItem('wanime_view_mode') as ViewMode) || 'detailed';
-  });
+  const [viewMode, setViewMode] = useState<ViewMode>('grid');
 
   // Phase 3 Advanced Filters states
   const [selectedStudio, setSelectedStudio] = useState<string | null>(null);

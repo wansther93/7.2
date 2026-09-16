@@ -788,25 +788,26 @@ export const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
           </div>
         </div>
 
-        {/* Rodapé de Ações Fixo e Ultra-Compacto (-70% de altura) */}
-        <div className="py-1.5 px-3 bg-black border-t border-white/10 flex items-center justify-between gap-2 flex-shrink-0 min-h-[38px]">
-          <div className="flex items-center gap-2 min-w-0">
+        {/* Rodapé de Ações Fixo e Responsivo (Sem Sobreposição) */}
+        <div className="py-2 px-3 sm:px-4 bg-black border-t border-white/10 flex items-center justify-between gap-2 flex-shrink-0 min-h-[44px]">
+          <div className="flex items-center gap-2 flex-wrap min-w-0">
             {existingUserAnime || addedJustNow ? (
-              <div className="flex items-center gap-2">
-                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400 bg-emerald-950/50 px-2 py-0.5 rounded-lg border border-emerald-500/30 whitespace-nowrap h-7">
-                  <Check className="w-3 h-3 shrink-0" />
-                  <span className="truncate">Na sua lista ({existingUserAnime?.status ? STATUS_CONFIG[existingUserAnime.status]?.label : 'Adicionado'})</span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-emerald-400 bg-emerald-950/60 px-2.5 py-1 rounded-lg border border-emerald-500/30 whitespace-nowrap h-7">
+                  <Check className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
+                  <span>Na sua lista</span>
                 </span>
                 {existingUserAnime && onOpenInTracker && (
                   <button
+                    id="schedule-btn-open-tracker"
                     type="button"
                     onClick={() => {
                       onClose();
                       onOpenInTracker(existingUserAnime.id);
                     }}
-                    className="text-[11px] text-zinc-400 hover:text-white underline whitespace-nowrap cursor-pointer"
+                    className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-400 hover:text-amber-300 bg-amber-950/40 hover:bg-amber-950/70 border border-amber-500/30 px-2.5 py-1 rounded-lg transition-all active:scale-95 cursor-pointer whitespace-nowrap h-7"
                   >
-                    Ver no rastreador
+                    <span>Ver no rastreador</span>
                   </button>
                 )}
               </div>
@@ -815,7 +816,7 @@ export const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
                 id="schedule-modal-add-btn"
                 type="button"
                 onClick={() => handleAddToList(effectiveAggregatedStatus.isCurrentlyAiring ? 'watching' : 'plan_to_watch')}
-                className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-black text-[11px] shadow-sm transition-all active:scale-95 cursor-pointer whitespace-nowrap h-7"
+                className="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-black text-[11px] shadow-sm transition-all active:scale-95 cursor-pointer whitespace-nowrap h-7"
               >
                 <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
                 <span>{effectiveAggregatedStatus.isCurrentlyAiring ? 'Começar a Assistir' : 'Adicionar à Lista'}</span>
@@ -824,9 +825,10 @@ export const ScheduleDetailModal: React.FC<ScheduleDetailModalProps> = ({
           </div>
 
           <button
+            id="schedule-modal-close-btn"
             type="button"
             onClick={onClose}
-            className="px-3 py-0.5 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-zinc-200 hover:text-white text-[11px] font-medium transition-colors cursor-pointer whitespace-nowrap h-7 flex items-center justify-center shrink-0"
+            className="px-3.5 py-1 rounded-lg bg-white/10 hover:bg-white/15 border border-white/10 text-zinc-200 hover:text-white text-[11px] font-medium transition-colors cursor-pointer whitespace-nowrap h-7 flex items-center justify-center shrink-0 ml-auto"
           >
             Fechar
           </button>

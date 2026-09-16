@@ -2,17 +2,23 @@ import type { Anime } from '../types';
 import { getAggregatedStreamingLinks, getAggregatedCharacters } from './multiApiAggregatorService';
 import type { AnimeStreamingLink, AnimeCharacterItem } from './jikanService';
 import { fetchAnimeThemesMedia, type AnimeThemeMedia } from './animeThemesService';
+import { fetchFreshAnimeDetails } from './animeSyncService';
+import { updateAnime } from './animeService';
 
 export interface DynamicAnimeRichData {
   streamingLinks: AnimeStreamingLink[];
   characters: AnimeCharacterItem[];
   themes: AnimeThemeMedia[];
   trailerUrl?: string | null;
+  bannerUrl?: string | null;
+  mal_id?: number | null;
   synopsis?: string | null;
   cachedAt?: number;
 }
 
 const STORAGE_PREFIX = 'wanime_rich_meta_';
+const RICH_DATA_TTL = 7 * 24 * 60 * 60 * 1000; // 7 dias para dados completos
+const EMPTY_DATA_TTL = 2 * 60 * 60 * 1000; // 2 horas para dados vazios/incompletos
 
 /**
  * Normaliza chave de identificação do anime para armazenamento local seguro
@@ -23,27 +29,42 @@ export function getAnimeStorageKey(animeIdOrTitle: number | string): string {
 }
 
 /**
- * Lê metadados ricos salvos no armazenamento persistente local (0ms de latência, 0 requisições de rede)
+ * Lê metadados ricos salvos no armazenamento persistente local com verificação de validade (TTL)
  */
 export function getPersistedAnimeRichData(anime: { mal_id?: number; id?: string; title: string }): DynamicAnimeRichData | null {
   if (typeof window === 'undefined' || !anime) return null;
 
   try {
+    let raw: string | null = null;
+
     // Tenta primeiro por mal_id (se tiver)
     if (anime.mal_id) {
-      const byId = localStorage.getItem(getAnimeStorageKey(anime.mal_id));
-      if (byId) {
-        const parsed = JSON.parse(byId);
-        if (parsed && Array.isArray(parsed.streamingLinks)) return parsed;
-      }
+      raw = localStorage.getItem(getAnimeStorageKey(anime.mal_id));
     }
 
-    // Tenta por título
-    if (anime.title) {
-      const byTitle = localStorage.getItem(getAnimeStorageKey(anime.title));
-      if (byTitle) {
-        const parsed = JSON.parse(byTitle);
-        if (parsed && Array.isArray(parsed.streamingLinks)) return parsed;
+    // Tenta por título se não encontrou por ID
+    if (!raw && anime.title) {
+      raw = localStorage.getItem(getAnimeStorageKey(anime.title));
+    }
+
+    if (raw) {
+      const parsed: DynamicAnimeRichData = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.streamingLinks)) {
+        const cachedTime = parsed.cachedAt || 0;
+        const age = Date.now() - cachedTime;
+        const isEmpty = (!parsed.characters || parsed.characters.length === 0) && (!parsed.streamingLinks || parsed.streamingLinks.length === 0);
+
+        // Se o cache for vazio ou incompleto e já tiver mais de 2 horas, expira para re-tentar na API
+        if (isEmpty && age > EMPTY_DATA_TTL) {
+          return null;
+        }
+
+        // Se o cache tiver mais de 7 dias, expira para buscar novidades (novos streamings, episódios, trailers)
+        if (age > RICH_DATA_TTL) {
+          return null;
+        }
+
+        return parsed;
       }
     }
   } catch (err) {
@@ -82,12 +103,12 @@ export function savePersistedAnimeRichData(
 
 /**
  * Obtém os metadados ricos de um anime da Coleção Completa:
- * 1. Se já existir no armazenamento persistente, retorna imediatamente (0ms).
- * 2. Se for um anime recém-adicionado que ainda não possui dados salvos, busca nas 3 APIs oficiais,
- *    salva no armazenamento persistente e retorna.
+ * 1. Se já existir no armazenamento persistente e for válido, retorna imediatamente (0ms).
+ * 2. Se for um anime recém-adicionado ou antigo sem mal_id/trailer, realiza auto-cura em segundo plano,
+ *    busca nas APIs oficiais, sincroniza com o Firestore e salva o cache renovado.
  */
 export async function getOrFetchAnimeRichData(
-  anime: { mal_id?: number; id?: string; title: string },
+  anime: { mal_id?: number; id?: string; title: string; trailerUrl?: string | null; bannerUrl?: string | null },
   forceRefresh = false
 ): Promise<DynamicAnimeRichData> {
   // 1. Verifica dados persistidos se não for refresh forçado
@@ -98,8 +119,41 @@ export async function getOrFetchAnimeRichData(
     }
   }
 
-  const malId = anime.mal_id || 0;
+  let malId = anime.mal_id || 0;
   const title = anime.title || '';
+  let resolvedTrailerUrl: string | null = anime.trailerUrl || null;
+  let resolvedBannerUrl: string | null = anime.bannerUrl || null;
+
+  // Auto-cura: para animes antigos que foram cadastrados sem mal_id ou sem trailer
+  if (!malId || !resolvedTrailerUrl || !resolvedBannerUrl) {
+    try {
+      const fresh = await fetchFreshAnimeDetails(title, malId || null);
+      if (fresh) {
+        if (!malId && fresh.mal_id) {
+          malId = fresh.mal_id;
+        }
+        if (!resolvedTrailerUrl && fresh.trailerUrl) {
+          resolvedTrailerUrl = fresh.trailerUrl;
+        }
+        if (!resolvedBannerUrl && fresh.bannerUrl) {
+          resolvedBannerUrl = fresh.bannerUrl;
+        }
+
+        // Se o anime possui ID no Firestore e descobrimos dados ausentes, atualiza silenciosamente
+        if (anime.id) {
+          const updates: Record<string, unknown> = {};
+          if (!anime.mal_id && fresh.mal_id) updates.mal_id = fresh.mal_id;
+          if (!anime.trailerUrl && fresh.trailerUrl) updates.trailerUrl = fresh.trailerUrl;
+          if (!anime.bannerUrl && fresh.bannerUrl) updates.bannerUrl = fresh.bannerUrl;
+          if (Object.keys(updates).length > 0) {
+            updateAnime(anime.id, updates as any).catch(() => {});
+          }
+        }
+      }
+    } catch (healErr) {
+      console.debug('Auto-cura de anime antigo finalizada com aviso:', healErr);
+    }
+  }
 
   // 2. Busca simultânea nas APIs agregadas (AniList + Jikan + Shikimori + AnimeThemes)
   const [streamRes, charRes, themesRes] = await Promise.allSettled([
@@ -117,10 +171,16 @@ export async function getOrFetchAnimeRichData(
     streamingLinks: sanitizedStreams,
     characters: charRes.status === 'fulfilled' ? charRes.value : [],
     themes: themesRes.status === 'fulfilled' ? themesRes.value : [],
+    trailerUrl: resolvedTrailerUrl,
+    bannerUrl: resolvedBannerUrl,
+    mal_id: malId || null,
   };
 
-  // Salva no armazenamento persistente para que futuros acessos sejam instantâneos
-  savePersistedAnimeRichData(anime, richData);
+  // Salva no armazenamento persistente se tiver informações válidas
+  savePersistedAnimeRichData(
+    { mal_id: malId || anime.mal_id, id: anime.id, title: anime.title },
+    richData
+  );
 
   return richData;
 }

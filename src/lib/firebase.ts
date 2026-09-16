@@ -32,19 +32,6 @@ export const googleProvider = new GoogleAuthProvider();
 // Inicialização oficial do Cloud Firestore conforme especificação do Firebase Skill
 export const db: Firestore = getFirestore(app, firebaseConfigJson.firestoreDatabaseId);
 
-// Validação de conexão não-bloqueante recomendada pelo Firebase Skill
-async function testConnection() {
-  try {
-    const { doc, getDocFromServer } = await import('firebase/firestore');
-    await getDocFromServer(doc(db, 'test', 'connection'));
-  } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
-      console.warn('Aviso: Cliente Firestore operando em modo offline temporário.');
-    }
-  }
-}
-testConnection();
-
 export const loginWithGoogle = async (): Promise<User | null> => {
   try {
     const result = await signInWithPopup(auth, googleProvider);
